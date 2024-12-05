@@ -8,7 +8,7 @@ use instruction::Instruction;
 use opcodes::Opcodes;
 use registers::Registers;
 
-// use crate::elf_parser::ElfHeader;
+use crate::elf_parser::{get_data_at_index, ElfHeader};
 
 pub(crate) mod instruction;
 
@@ -36,24 +36,43 @@ impl Vm {
     }
 
     fn fetch(&self) -> &[u8] {
-        self.mem_read(WORD_SIZE, Registers::Pc as u32)
+        self.mem_read(WORD_SIZE, self.get_register(Registers::Pc as u32))
     }
 
     fn load_program_from_file(&mut self, path: String) {
         let mut file = BufReader::new(File::open(path).unwrap());
         let mut buf = vec![];
         file.read_to_end(&mut buf).unwrap();
-        // let decoded_elf = ElfHeader::decode_elf(&buf);
-        // let pc = self.get_register(Registers::Pc as u32) as usize;
-        // self.memory[pc..pc + buf.len()].clone_from_slice(&buf);
-        // self.set_register(Registers::Pc as u32, decoded_elf.e_entry);
+
+        let decoded_elf = ElfHeader::decode_elf(&buf);
+
+        for ph in decoded_elf.e_ph {
+            if ph.ph_type == 0x1 {
+                if ph.file_size == 0 {
+                    continue;
+                };
+                self.memory
+                    [ph.virtual_address as usize..(ph.virtual_address + ph.memory_size) as usize]
+                    .clone_from_slice(get_data_at_index(
+                        &buf,
+                        ph.offset as usize,
+                        ph.file_size as usize,
+                    ));
+            }
+        }
+
+        self.set_register(Registers::Pc as u32, decoded_elf.e_entry);
     }
 
     fn run_program(&mut self) {
-        let instruction = self.fetch();
-        let instr = Instruction::decode(instruction);
-        self.execute(instr);
-        self.update_pc();
+        let mut instruction = self.fetch();
+
+        while u32::from_le_bytes(instruction.try_into().unwrap_or_default()) != 0 {
+            let instr = Instruction::decode(instruction);
+            self.execute(instr);
+            self.update_pc();
+            instruction = self.fetch();
+        }
     }
 
     fn execute(&mut self, instruction: Instruction) {
@@ -390,9 +409,7 @@ fn sign_extend() -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::vm::{BYTE, HALF_WORD, WORD_SIZE};
-
-    use super::Vm;
+    use crate::vm::{Vm, BYTE, HALF_WORD, WORD_SIZE};
 
     #[test]
     fn test_mem_read() {
@@ -441,6 +458,6 @@ mod tests {
 
         vm.load_program_from_file("src/examples/fibonacci.elf".to_string());
 
-        // vm.run_program();
+        vm.run_program();
     }
 }

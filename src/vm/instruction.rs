@@ -239,7 +239,6 @@ mod tests {
 
     #[test]
     fn test_endianess() {
-        // let val = [0x6f, 0x00, 0x00, 0x05];
         let val = [0x6f, 0x00, 0x00, 0x05];
         dbg!(format_args!("{:?}", Instruction::decode(&val)));
     }
