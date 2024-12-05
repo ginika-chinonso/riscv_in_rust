@@ -1,15 +1,20 @@
 mod registers;
-use std::{fs::File, io::Read};
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+};
 
-use instruction::{into_byte, into_u32, Instruction};
+use instruction::Instruction;
 use opcodes::Opcodes;
 use registers::Registers;
 
-mod instruction;
+// use crate::elf_parser::ElfHeader;
+
+pub(crate) mod instruction;
 
 mod opcodes;
 
-const WORD_SIZE: usize = 4; // word size = 32 bits = 8bits * 4
+pub(crate) const WORD_SIZE: usize = 4; // word size = 32 bits = 8bits * 4
 const HALF_WORD: usize = 2;
 const BYTE: usize = 1;
 const MAX_ADDRESSABLE_MEMORY: usize = 1 << 32; // ????
@@ -35,10 +40,13 @@ impl Vm {
     }
 
     fn load_program_from_file(&mut self, path: String) {
-        let mut file = File::open(path).unwrap();
+        let mut file = BufReader::new(File::open(path).unwrap());
         let mut buf = vec![];
-        file.read(&mut buf).unwrap();
-        // self.memory[self.get_register(Registers::Pc as u32)..self.get_register(Registers::Pc as u32) + buf.len() as u32].clone_from_slice(&buf);
+        file.read_to_end(&mut buf).unwrap();
+        // let decoded_elf = ElfHeader::decode_elf(&buf);
+        // let pc = self.get_register(Registers::Pc as u32) as usize;
+        // self.memory[pc..pc + buf.len()].clone_from_slice(&buf);
+        // self.set_register(Registers::Pc as u32, decoded_elf.e_entry);
     }
 
     fn run_program(&mut self) {
@@ -187,35 +195,47 @@ impl Vm {
             Opcodes::Lb => {
                 self.set_register(
                     instruction.rd,
-                    into_u32(
-                        self.mem_read(BYTE, self.get_register(instruction.rs1) + instruction.imm),
+                    u32::from_le_bytes(
+                        self.mem_read(BYTE, self.get_register(instruction.rs1) + instruction.imm)
+                            .try_into()
+                            .unwrap(),
                     ),
                 );
             }
             Opcodes::Lh => {
                 self.set_register(
                     instruction.rd,
-                    into_u32(self.mem_read(
-                        HALF_WORD,
-                        self.get_register(instruction.rs1) + instruction.imm,
-                    )),
+                    u32::from_le_bytes(
+                        self.mem_read(
+                            HALF_WORD,
+                            self.get_register(instruction.rs1) + instruction.imm,
+                        )
+                        .try_into()
+                        .unwrap(),
+                    ),
                 );
             }
             Opcodes::Lw => {
                 self.set_register(
                     instruction.rd,
-                    into_u32(self.mem_read(
-                        WORD_SIZE,
-                        self.get_register(instruction.rs1) + instruction.imm,
-                    )),
+                    u32::from_le_bytes(
+                        self.mem_read(
+                            WORD_SIZE,
+                            self.get_register(instruction.rs1) + instruction.imm,
+                        )
+                        .try_into()
+                        .unwrap(),
+                    ),
                 );
             }
             Opcodes::Lbu => {
                 // zero extend
                 self.set_register(
                     instruction.rd,
-                    into_u32(
-                        self.mem_read(BYTE, self.get_register(instruction.rs1) + instruction.imm),
+                    u32::from_le_bytes(
+                        self.mem_read(BYTE, self.get_register(instruction.rs1) + instruction.imm)
+                            .try_into()
+                            .unwrap(),
                     ),
                 );
             }
@@ -223,31 +243,35 @@ impl Vm {
                 // zero extend
                 self.set_register(
                     instruction.rd,
-                    into_u32(self.mem_read(
-                        HALF_WORD,
-                        self.get_register(instruction.rs1) + instruction.imm,
-                    )),
+                    u32::from_le_bytes(
+                        self.mem_read(
+                            HALF_WORD,
+                            self.get_register(instruction.rs1) + instruction.imm,
+                        )
+                        .try_into()
+                        .unwrap(),
+                    ),
                 );
             }
             Opcodes::Sb => {
                 self.mem_write(
                     BYTE,
                     self.get_register(instruction.rs1) + instruction.imm,
-                    into_byte(instruction.rs2).as_slice(),
+                    instruction.rs2.to_le_bytes().as_slice(),
                 );
             }
             Opcodes::Sh => {
                 self.mem_write(
                     HALF_WORD,
                     self.get_register(instruction.rs1) + instruction.imm,
-                    into_byte(instruction.rs2).as_slice(),
+                    instruction.rs2.to_le_bytes().as_slice(),
                 );
             }
             Opcodes::Sw => {
                 self.mem_write(
                     WORD_SIZE,
                     self.get_register(instruction.rs1) + instruction.imm,
-                    into_byte(instruction.rs2).as_slice(),
+                    instruction.rs2.to_le_bytes().as_slice(),
                 );
             }
             Opcodes::Beq => {
@@ -316,12 +340,12 @@ impl Vm {
                 );
             }
             Opcodes::Lui => {
-                self.set_register(instruction.rd, instruction.imm >> 12);
+                self.set_register(instruction.rd, instruction.imm << 12);
             }
             Opcodes::Auipc => {
                 self.set_register(
                     instruction.rd,
-                    self.get_register(Registers::Pc as u32) + (instruction.imm >> 12),
+                    self.get_register(Registers::Pc as u32) + (instruction.imm << 12),
                 );
             }
             Opcodes::Ecall => todo!(),  // transfer control to Os
@@ -360,11 +384,15 @@ impl Vm {
     }
 }
 
+fn sign_extend() -> u32 {
+    todo!()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::vm::{BYTE, HALF_WORD, WORD_SIZE};
 
-    use super::{instruction::into_u32, Vm};
+    use super::Vm;
 
     #[test]
     fn test_mem_read() {
@@ -403,7 +431,16 @@ mod tests {
         let mem = [0x00, 0xc5, 0x85, 0x33];
         let mut b = [0; WORD_SIZE];
         b[2..=3].clone_from_slice(&mem[2..=3]);
-        let v = into_u32(&mem);
+        let v = u32::from_le_bytes(mem);
         dbg!(format_args!("{:?}", b));
+    }
+
+    #[test]
+    fn test_load_program_from_file() {
+        let mut vm = Vm::initialize();
+
+        vm.load_program_from_file("src/examples/fibonacci.elf".to_string());
+
+        // vm.run_program();
     }
 }

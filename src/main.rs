@@ -1,3 +1,4 @@
+// mod elf_parser;
 mod vm;
 
 fn main() {

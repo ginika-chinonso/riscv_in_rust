@@ -1,6 +1,7 @@
 use super::opcodes::Opcodes;
 
 // todo!: verify the types
+#[derive(Debug)]
 pub(crate) struct Instruction {
     pub(crate) opcode: Opcodes,
     pub(crate) rd: u32,
@@ -9,7 +10,6 @@ pub(crate) struct Instruction {
     pub(crate) rs2: u32,
     pub(crate) funct7: u32,
     pub(crate) imm: u32,
-    pub(crate) imm_1: u32,
     pub(crate) succ: u32,
     pub(crate) pred: u32,
     pub(crate) fm: u32,
@@ -25,7 +25,6 @@ impl Instruction {
             rs2: 0,
             funct7: 0,
             imm: 0,
-            imm_1: 0,
             succ: 0,
             pred: 0,
             fm: 0,
@@ -33,15 +32,15 @@ impl Instruction {
     }
 
     pub(crate) fn decode(instruction: &[u8]) -> Self {
-        let instr = into_u32(instruction);
+        let instr = u32::from_le_bytes(instruction.try_into().unwrap());
         let mut res = Instruction::new();
 
         if instr & 0x7F == 0x33 {
             // R type
-            res.rd = (instr >> 7) & 0xF;
-            res.funct3 = (instr >> 12) & 0x3;
-            res.rs1 = (instr >> 15) & 0xF;
-            res.rs2 = (instr >> 20) & 0xF;
+            res.rd = (instr >> 7) & 0x1F;
+            res.funct3 = (instr >> 12) & 0x7;
+            res.rs1 = (instr >> 15) & 0x1F;
+            res.rs2 = (instr >> 20) & 0x1F;
             res.funct7 = instr >> 25;
 
             match res.funct3 {
@@ -67,9 +66,9 @@ impl Instruction {
             res
         } else if instr & 0x7F == 0x13 {
             // I type
-            res.rd = (instr >> 7) & 0xF;
-            res.funct3 = (instr >> 12) & 0x3;
-            res.rs1 = (instr >> 15) & 0xF;
+            res.rd = (instr >> 7) & 0x1F;
+            res.funct3 = (instr >> 12) & 0x7;
+            res.rs1 = (instr >> 15) & 0x1F;
             res.imm = instr >> 20;
 
             match res.funct3 {
@@ -97,9 +96,9 @@ impl Instruction {
             res
         } else if instr & 0x7F == 0x3 {
             // Load I type
-            res.rd = (instr >> 7) & 0xF;
-            res.funct3 = (instr >> 12) & 0x3;
-            res.rs1 = (instr >> 15) & 0xF;
+            res.rd = (instr >> 7) & 0x1F;
+            res.funct3 = (instr >> 12) & 0x7;
+            res.rs1 = (instr >> 15) & 0x1F;
             res.imm = instr >> 20;
 
             match res.funct3 {
@@ -114,11 +113,10 @@ impl Instruction {
             res
         } else if instr & 0x7F == 0x23 {
             // S type
-            res.funct3 = (instr >> 12) & 0x3;
-            res.rs1 = (instr >> 15) & 0xF;
-            res.rs2 = (instr >> 20) & 0xF;
-            res.imm = (instr >> 7) & 0xF;
-            res.imm_1 = instr >> 25;
+            res.funct3 = (instr >> 12) & 0x7;
+            res.rs1 = (instr >> 15) & 0x1F;
+            res.rs2 = (instr >> 20) & 0x1F;
+            res.imm = (instr >> 25) << 5 | ((instr >> 7) & 0x1F);
 
             match res.funct3 {
                 0x0 => res.opcode = Opcodes::Sb,
@@ -130,11 +128,13 @@ impl Instruction {
             res
         } else if instr & 0x7F == 0x63 {
             // B type
-            res.funct3 = (instr >> 12) & 0x3;
-            res.rs1 = (instr >> 15) & 0xF;
-            res.rs2 = (instr >> 20) & 0xF;
-            res.imm = (instr >> 7) & 0xF;
-            res.imm_1 = instr >> 25;
+            res.funct3 = (instr >> 12) & 0x7;
+            res.rs1 = (instr >> 15) & 0x1F;
+            res.rs2 = (instr >> 20) & 0x1F;
+            res.imm = (instr >> 31) << 12
+                | ((instr >> 7) & 1) << 11
+                | ((instr >> 25) & 0x3F) << 10
+                | ((instr >> 8) & 0xF) << 1;
 
             match res.funct3 {
                 0x0 => res.opcode = Opcodes::Beq,
@@ -150,14 +150,17 @@ impl Instruction {
         } else if instr & 0x7F == 0x6f {
             // J type
             res.opcode = Opcodes::Jal;
-            res.rd = (instr >> 7) & 0xF;
-            res.imm = instr >> 12;
+            res.rd = (instr >> 7) & 0x1F;
+            res.imm = (instr >> 31) << 20
+                | ((instr >> 12) & 0xFF) << 19
+                | ((instr >> 20) & 0x1) << 11
+                | ((instr >> 21) & 0x7FF) << 1;
             res
         } else if instr & 0x7F == 0x67 {
             // I type
-            res.rd = (instr >> 7) & 0xF;
-            res.funct3 = (instr >> 12) & 0x3;
-            res.rs1 = (instr >> 15) & 0xF;
+            res.rd = (instr >> 7) & 0x1F;
+            res.funct3 = (instr >> 12) & 0x7;
+            res.rs1 = (instr >> 15) & 0x1F;
             res.imm = instr >> 20;
             res.opcode = Opcodes::Jalr;
 
@@ -165,7 +168,7 @@ impl Instruction {
         } else if instr & 0x7F == 0x37 {
             // U type
 
-            res.rd = (instr >> 7) & 0xF;
+            res.rd = (instr >> 7) & 0x1F;
             res.imm = instr >> 12;
             res.opcode = Opcodes::Lui;
             res
@@ -178,9 +181,10 @@ impl Instruction {
         } else if instr & 0x7F == 0x73 {
             // I type
 
-            res.rd = (instr >> 7) & 0xF;
-            res.funct3 = (instr >> 12) & 0x3;
-            res.rs1 = (instr >> 15) & 0xF;
+            res.rd = (instr >> 7) & 0x1F;
+            res.funct3 = (instr >> 12) & 0x7;
+            res.rs1 = (instr >> 15) & 0x1F;
+            res.imm = instr >> 20;
 
             match res.imm {
                 0x0 => res.opcode = Opcodes::Ecall,
@@ -193,11 +197,11 @@ impl Instruction {
             // Fence
 
             res.opcode = Opcodes::Fence;
-            res.rd = (instr >> 7) & 0xF;
-            res.funct3 = (instr >> 12) & 0x3;
-            res.rs1 = (instr >> 15) & 0xF;
-            res.succ = (instr >> 20) & 0x7;
-            res.pred = (instr >> 24) & 0x7;
+            res.rd = (instr >> 7) & 0x1F;
+            res.funct3 = (instr >> 12) & 0x7;
+            res.rs1 = (instr >> 15) & 0x1F;
+            res.succ = (instr >> 20) & 0xF;
+            res.pred = (instr >> 24) & 0xF;
             res.fm = instr >> 28;
 
             res
@@ -207,27 +211,9 @@ impl Instruction {
     }
 }
 
-// u32 returned is le(little endian)
-pub(crate) fn into_u32(instr: &[u8]) -> u32 {
-    (instr[0] as u32) << 24 | (instr[1] as u32) << 16 | (instr[2] as u32) << 8 | (instr[3] as u32)
-}
-
-// converts u32 to byte
-pub(crate) fn into_byte(val: u32) -> Vec<u8> {
-    vec![
-        (val >> 24) as u8,
-        ((val >> 16) & 0xFF) as u8,
-        ((val >> 8) & 0xFF) as u8,
-        (val & 0xFF) as u8,
-    ]
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::vm::{
-        instruction::{into_byte, into_u32, Instruction},
-        opcodes::Opcodes,
-    };
+    use crate::vm::{instruction::Instruction, opcodes::Opcodes};
 
     #[test]
     fn test_decode_add_instruction() {
@@ -236,25 +222,73 @@ mod tests {
         //
         //               rs2   rs1    funct3  rd     opcode
         // 0x00c58533 -> 1100  01011  000     01010  0110011 = add x10, x11, x12
-        let instr_as_bytes: [u8; 4] = [0x00, 0xc5, 0x85, 0x33];
-        let val = into_u32(&instr_as_bytes);
-
-        dbg!(format!("instr : {:b}", val));
-
-        dbg!(format!("Opcode : {:b}", val & 0x7F));
-        dbg!(format!("rd : {:b}", (val >> 7) & 0xF));
-        dbg!(format!("funct3 : {:b}", (val >> 12) & 0x3));
-        dbg!(format!("rs1 : {:b}", (val >> 15) & 0xF));
-        dbg!(format!("rs2 : {:b}", (val >> 20) & 0xF));
-        dbg!(format!("funct7 : {:b}", val >> 25));
+        let instr_as_bytes: [u8; 4] = [0x33, 0x85, 0xc5, 0x00];
+        let val = u32::from_le_bytes(instr_as_bytes);
 
         let instr = Instruction::decode(&instr_as_bytes);
         assert_eq!(instr.opcode, Opcodes::Add);
         assert_eq!(instr.rd, 10);
         assert_eq!(instr.rs1, 11);
         assert_eq!(instr.rs2, 12);
+        assert_eq!(instr.funct3, 0);
+        assert_eq!(instr.funct7, 0);
 
-        let res = into_byte(val);
+        let res = val.to_le_bytes();
         assert_eq!(res, instr_as_bytes);
+    }
+
+    #[test]
+    fn test_endianess() {
+        // let val = [0x6f, 0x00, 0x00, 0x05];
+        let val = [0x6f, 0x00, 0x00, 0x05];
+        dbg!(format_args!("{:?}", Instruction::decode(&val)));
+    }
+
+    #[test]
+    fn test_decode_instruction_i_type() {
+        let val = 0x00C58513_u32.to_le_bytes();
+        let instr = Instruction::decode(&val);
+        assert_eq!(instr.imm, 12);
+    }
+
+    #[test]
+    fn test_decode_instruction_s_type() {
+        let val = 0x00822323_u32.to_le_bytes();
+        let instr = Instruction::decode(&val);
+        assert_eq!(instr.imm, 6);
+    }
+
+    #[test]
+    fn test_decode_instruction_s_type_neg() {
+        let val = 0xfe822d23_u32.to_le_bytes();
+        let instr = Instruction::decode(&val);
+        assert_eq!(instr.imm, -6_i32 as u32);
+    }
+
+    #[test]
+    fn test_decode_instruction_beq_type() {
+        let val = 0x00628a63_u32.to_le_bytes();
+        dbg!(format_args!("{:b}", 0x00628a63));
+        let instr = Instruction::decode(&val);
+        dbg!(&instr);
+        assert_eq!(instr.imm, 20);
+    }
+
+    #[test]
+    fn test_decode_instruction_u_type() {
+        let val = 0x000a42b7_u32.to_le_bytes();
+        dbg!(format_args!("{:b}", 0x000a42b7));
+        let instr = Instruction::decode(&val);
+        dbg!(&instr);
+        assert_eq!(instr.imm, 164);
+    }
+
+    #[test]
+    fn test_decode_instruction_jal_type() {
+        let val = 0x02c002ef_u32.to_le_bytes();
+        dbg!(format_args!("{:b}", 0x02c002ef));
+        let instr = Instruction::decode(&val);
+        dbg!(&instr);
+        assert_eq!(instr.imm, 44);
     }
 }
