@@ -80,13 +80,14 @@ impl Vm {
             Opcodes::Add => {
                 self.set_register(
                     instruction.rd,
-                    self.get_register(instruction.rs1) + self.get_register(instruction.rs2),
+                    self.get_register(instruction.rs1)
+                        .wrapping_add(self.get_register(instruction.rs2)),
                 );
             }
             Opcodes::Sub => {
                 self.set_register(
                     instruction.rd,
-                    self.get_register(instruction.rs1) - self.get_register(instruction.rs2),
+                    self.get_register(instruction.rs1) - self.get_register(instruction.rs2), // TODO: verify
                 );
             }
             Opcodes::Xor => {
@@ -150,7 +151,8 @@ impl Vm {
             Opcodes::Addi => {
                 self.set_register(
                     instruction.rd,
-                    self.get_register(instruction.rs1) + instruction.imm,
+                    self.get_register(instruction.rs1)
+                        .wrapping_add(instruction.imm),
                 );
             }
             Opcodes::Xori => {
@@ -215,9 +217,13 @@ impl Vm {
                 self.set_register(
                     instruction.rd,
                     u32::from_le_bytes(
-                        self.mem_read(BYTE, self.get_register(instruction.rs1) + instruction.imm)
-                            .try_into()
-                            .unwrap(),
+                        self.mem_read(
+                            BYTE,
+                            self.get_register(instruction.rs1)
+                                .wrapping_add(instruction.imm),
+                        )
+                        .try_into()
+                        .unwrap(),
                     ),
                 );
             }
@@ -227,7 +233,8 @@ impl Vm {
                     u32::from_le_bytes(
                         self.mem_read(
                             HALF_WORD,
-                            self.get_register(instruction.rs1) + instruction.imm,
+                            self.get_register(instruction.rs1)
+                                .wrapping_add(instruction.imm),
                         )
                         .try_into()
                         .unwrap(),
@@ -240,7 +247,8 @@ impl Vm {
                     u32::from_le_bytes(
                         self.mem_read(
                             WORD_SIZE,
-                            self.get_register(instruction.rs1) + instruction.imm,
+                            self.get_register(instruction.rs1)
+                                .wrapping_add(instruction.imm),
                         )
                         .try_into()
                         .unwrap(),
@@ -252,9 +260,13 @@ impl Vm {
                 self.set_register(
                     instruction.rd,
                     u32::from_le_bytes(
-                        self.mem_read(BYTE, self.get_register(instruction.rs1) + instruction.imm)
-                            .try_into()
-                            .unwrap(),
+                        self.mem_read(
+                            BYTE,
+                            self.get_register(instruction.rs1)
+                                .wrapping_add(instruction.imm),
+                        )
+                        .try_into()
+                        .unwrap(),
                     ),
                 );
             }
@@ -265,7 +277,8 @@ impl Vm {
                     u32::from_le_bytes(
                         self.mem_read(
                             HALF_WORD,
-                            self.get_register(instruction.rs1) + instruction.imm,
+                            self.get_register(instruction.rs1)
+                                .wrapping_add(instruction.imm),
                         )
                         .try_into()
                         .unwrap(),
@@ -275,21 +288,24 @@ impl Vm {
             Opcodes::Sb => {
                 self.mem_write(
                     BYTE,
-                    self.get_register(instruction.rs1) + instruction.imm,
+                    self.get_register(instruction.rs1)
+                        .wrapping_add(instruction.imm),
                     instruction.rs2.to_le_bytes().as_slice(),
                 );
             }
             Opcodes::Sh => {
                 self.mem_write(
                     HALF_WORD,
-                    self.get_register(instruction.rs1) + instruction.imm,
+                    self.get_register(instruction.rs1)
+                        .wrapping_add(instruction.imm),
                     instruction.rs2.to_le_bytes().as_slice(),
                 );
             }
             Opcodes::Sw => {
                 self.mem_write(
                     WORD_SIZE,
-                    self.get_register(instruction.rs1) + instruction.imm,
+                    self.get_register(instruction.rs1)
+                        .wrapping_add(instruction.imm),
                     instruction.rs2.to_le_bytes().as_slice(),
                 );
             }
@@ -297,7 +313,8 @@ impl Vm {
                 if instruction.rs1 == instruction.rs2 {
                     self.set_register(
                         Registers::Pc as u32,
-                        self.get_register(Registers::Pc as u32) + instruction.imm,
+                        self.get_register(Registers::Pc as u32)
+                            .wrapping_add(instruction.imm),
                     );
                 }
             }
@@ -305,7 +322,8 @@ impl Vm {
                 if instruction.rs1 != instruction.rs2 {
                     self.set_register(
                         Registers::Pc as u32,
-                        self.get_register(Registers::Pc as u32) + instruction.imm,
+                        self.get_register(Registers::Pc as u32)
+                            .wrapping_add(instruction.imm),
                     );
                 }
             }
@@ -313,7 +331,8 @@ impl Vm {
                 if instruction.rs1 < instruction.rs2 {
                     self.set_register(
                         Registers::Pc as u32,
-                        self.get_register(Registers::Pc as u32) + instruction.imm,
+                        self.get_register(Registers::Pc as u32)
+                            .wrapping_add(instruction.imm),
                     );
                 }
             }
@@ -321,7 +340,8 @@ impl Vm {
                 if instruction.rs1 >= instruction.rs2 {
                     self.set_register(
                         Registers::Pc as u32,
-                        self.get_register(Registers::Pc as u32) + instruction.imm,
+                        self.get_register(Registers::Pc as u32)
+                            .wrapping_add(instruction.imm),
                     );
                 }
             }
@@ -330,7 +350,8 @@ impl Vm {
                 if instruction.rs1 < instruction.rs2 {
                     self.set_register(
                         Registers::Pc as u32,
-                        self.get_register(Registers::Pc as u32) + instruction.imm,
+                        self.get_register(Registers::Pc as u32)
+                            .wrapping_add(instruction.imm),
                     );
                 }
             }
@@ -339,7 +360,8 @@ impl Vm {
                 if instruction.rs1 >= instruction.rs2 {
                     self.set_register(
                         Registers::Pc as u32,
-                        self.get_register(Registers::Pc as u32) + instruction.imm,
+                        self.get_register(Registers::Pc as u32)
+                            .wrapping_add(instruction.imm),
                     );
                 }
             }
@@ -348,14 +370,16 @@ impl Vm {
                 self.set_register(instruction.rd, self.get_register(Registers::Pc as u32) + 4);
                 self.set_register(
                     Registers::Pc as u32,
-                    self.get_register(Registers::Pc as u32) + instruction.imm,
+                    self.get_register(Registers::Pc as u32)
+                        .wrapping_add(instruction.imm),
                 );
             }
             Opcodes::Jalr => {
                 self.set_register(instruction.rd, self.get_register(Registers::Pc as u32) + 4);
                 self.set_register(
                     Registers::Pc as u32,
-                    self.get_register(instruction.rs1) + instruction.imm,
+                    self.get_register(instruction.rs1)
+                        .wrapping_add(instruction.imm),
                 );
             }
             Opcodes::Lui => {
@@ -364,7 +388,8 @@ impl Vm {
             Opcodes::Auipc => {
                 self.set_register(
                     instruction.rd,
-                    self.get_register(Registers::Pc as u32) + (instruction.imm << 12),
+                    self.get_register(Registers::Pc as u32)
+                        .wrapping_add(instruction.imm << 12),
                 );
             }
             Opcodes::Ecall => todo!(),  // transfer control to Os
@@ -403,13 +428,19 @@ impl Vm {
     }
 }
 
-fn sign_extend() -> u32 {
-    todo!()
+fn sign_extend(value: u32, bit_count: u32) -> u32 {
+    if (value >> bit_count) & 1 == 1 {
+        (0xFFFFFFFF >> bit_count) << bit_count | value
+    } else {
+        value
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::vm::{Vm, BYTE, HALF_WORD, WORD_SIZE};
+
+    use super::sign_extend;
 
     #[test]
     fn test_mem_read() {
@@ -459,5 +490,12 @@ mod tests {
         vm.load_program_from_file("src/examples/fibonacci.elf".to_string());
 
         vm.run_program();
+    }
+
+    #[test]
+    fn test_sign_extend() {
+        let v = -6_i8;
+        let v_ext = sign_extend(v as u32, 8);
+        dbg!(v_ext as i32);
     }
 }

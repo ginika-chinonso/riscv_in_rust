@@ -1,7 +1,8 @@
 use crate::vm::WORD_SIZE;
 
 pub(crate) struct ElfHeader {
-    pub(crate) e_ident: u32, // file identifier
+    pub(crate) e_ident: u32,  // file identifier
+    pub(crate) e_os_abi: u32, // os abi
     pub(crate) e_type: u32,
     pub(crate) e_machine: u32, // machine type  - riscv
     pub(crate) e_version: u32,
@@ -23,6 +24,7 @@ impl Default for ElfHeader {
     fn default() -> Self {
         Self {
             e_ident: Default::default(),
+            e_os_abi: Default::default(),
             e_type: Default::default(),
             e_machine: Default::default(),
             e_version: Default::default(),
@@ -142,6 +144,11 @@ impl ElfHeader {
                 .try_into()
                 .unwrap(),
         ); // section header offset
+
+        let mut os_abi = [0; 4];
+        os_abi[0..1].copy_from_slice(get_data_at_index(file_in_byte, 0x07, 1).try_into().unwrap());
+
+        res.e_os_abi = u32::from_le_bytes(os_abi);
 
         let mut phentsize = [0; 4];
         phentsize[0..2]
