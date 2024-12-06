@@ -69,6 +69,9 @@ impl Vm {
 
         while u32::from_le_bytes(instruction.try_into().unwrap_or_default()) != 0 {
             let instr = Instruction::decode(instruction);
+
+            dbg!(format!("{}", instr));
+
             self.execute(instr);
             self.update_pc();
             instruction = self.fetch();
@@ -290,10 +293,11 @@ impl Vm {
                     BYTE,
                     self.get_register(instruction.rs1)
                         .wrapping_add(instruction.imm),
-                    instruction.rs2.to_le_bytes().as_slice(),
+                    &[instruction.rs2.to_le_bytes().as_slice()[0]],
                 );
             }
             Opcodes::Sh => {
+                dbg!(&instruction.rs2.to_le_bytes().as_slice()[0..2]);
                 self.mem_write(
                     HALF_WORD,
                     self.get_register(instruction.rs1)
@@ -416,14 +420,19 @@ impl Vm {
 
     fn mem_read(&self, size: usize, memory_address: u32) -> &[u8] {
         // todo: verify if this should be be or le???
-        &self.memory
-            [((memory_address as usize) + WORD_SIZE - size)..(memory_address as usize + WORD_SIZE)]
+        // &self.memory
+        //     [((memory_address as usize) + WORD_SIZE - size)..(memory_address as usize + WORD_SIZE)]
+
+        &self.memory[memory_address as usize..(memory_address as usize + size)]
     }
 
     fn mem_write(&mut self, size: usize, memory_address: u32, value: &[u8]) {
         // todo: verify if this should be be or le???
-        self.memory[((memory_address as usize) + WORD_SIZE - size)
-            ..((memory_address as usize) + WORD_SIZE)]
+        // self.memory[((memory_address as usize) + WORD_SIZE - size)
+        //     ..((memory_address as usize) + WORD_SIZE)]
+        //     .copy_from_slice(&value);
+
+        self.memory[memory_address as usize..(memory_address as usize) + size]
             .copy_from_slice(&value);
     }
 }
@@ -455,22 +464,22 @@ mod tests {
         assert_eq!(vm.mem_read(WORD_SIZE, memory_address), value);
 
         //read byte
-        assert_eq!(vm.mem_read(1, memory_address), [20]);
+        assert_eq!(vm.mem_read(BYTE, memory_address), [30]);
 
         //read half word
-        assert_eq!(vm.mem_read(2, memory_address), [18, 20]);
+        assert_eq!(vm.mem_read(HALF_WORD, memory_address), [30, 15]);
 
         // store full word
-        vm.mem_write(WORD_SIZE, 5, &[20, 18, 15, 30]);
-        assert_eq!(vm.mem_read(WORD_SIZE, 5), &[20, 18, 15, 30]);
+        vm.mem_write(WORD_SIZE, memory_address, &[20, 18, 15, 30]);
+        assert_eq!(vm.mem_read(WORD_SIZE, memory_address), &[20, 18, 15, 30]);
 
         // store byte
-        vm.mem_write(BYTE, 5, &[45]);
-        assert_eq!(vm.mem_read(WORD_SIZE, 5), &[20, 18, 15, 45]);
+        vm.mem_write(BYTE, memory_address, &[45]);
+        assert_eq!(vm.mem_read(WORD_SIZE, memory_address), &[45, 18, 15, 30]);
 
         // store half word
-        vm.mem_write(HALF_WORD, 5, &[20, 60]);
-        assert_eq!(vm.mem_read(WORD_SIZE, 5), &[20, 18, 20, 60]);
+        vm.mem_write(HALF_WORD, memory_address, &[35, 40]);
+        assert_eq!(vm.mem_read(WORD_SIZE, memory_address), &[35, 40, 15, 30]);
     }
 
     #[test]

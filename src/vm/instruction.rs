@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::{opcodes::Opcodes, sign_extend};
 
 // todo!: verify the types
@@ -217,6 +219,141 @@ impl Instruction {
     }
 }
 
+impl Display for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.opcode {
+            Opcodes::Add => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Sub => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Xor => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Or => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::And => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Sll => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Srl => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Sra => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Slt => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Sltu => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.rs2
+            )),
+            Opcodes::Addi => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Xori => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Ori => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Andi => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Slli => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Srli => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Srai => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Slti => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Sltiu => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Lb => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Lh => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Lw => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Lbu => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Lhu => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Sb => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rs1, self.rs2, self.imm as i32
+            )),
+            Opcodes::Sh => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rs1, self.rs2, self.imm as i32
+            )),
+            Opcodes::Sw => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rs1, self.rs2, self.imm as i32
+            )),
+            Opcodes::Beq => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rs1, self.rs2)),
+            Opcodes::Bne => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rs1, self.rs2)),
+            Opcodes::Blt => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rs1, self.rs2)),
+            Opcodes::Bge => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rs1, self.rs2)),
+            Opcodes::Bltu => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rs1, self.rs2)),
+            Opcodes::Bgeu => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rs1, self.rs2)),
+            Opcodes::Jal => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Jalr => f.write_fmt(format_args!(
+                "{} {} {} {}",
+                self.opcode, self.rd, self.rs1, self.imm as i32
+            )),
+            Opcodes::Lui => f.write_fmt(format_args!("{}", self.opcode)),
+            Opcodes::Auipc => f.write_fmt(format_args!("{}", self.opcode)),
+            Opcodes::Ecall => f.write_fmt(format_args!("{}", self.opcode)),
+            Opcodes::Ebreak => f.write_fmt(format_args!("{}", self.opcode)),
+            Opcodes::Fence => f.write_fmt(format_args!("{}", self.opcode)),
+            Opcodes::Default => f.write_fmt(format_args!("{}", self.opcode)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::vm::{instruction::Instruction, opcodes::Opcodes};
@@ -295,5 +432,12 @@ mod tests {
         let instr = Instruction::decode(&val);
         dbg!(&instr);
         assert_eq!(instr.imm, 44);
+    }
+
+    #[test]
+    fn test_display_instruction() {
+        let inst = 0xfe822d23_u32.to_le_bytes();
+        let instr = Instruction::decode(&inst);
+        println!("{}", instr);
     }
 }
