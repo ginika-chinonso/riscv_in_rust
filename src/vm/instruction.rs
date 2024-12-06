@@ -1,4 +1,4 @@
-use super::opcodes::Opcodes;
+use super::{opcodes::Opcodes, sign_extend};
 
 // todo!: verify the types
 #[derive(Debug)]
@@ -69,7 +69,7 @@ impl Instruction {
             res.rd = (instr >> 7) & 0x1F;
             res.funct3 = (instr >> 12) & 0x7;
             res.rs1 = (instr >> 15) & 0x1F;
-            res.imm = instr >> 20;
+            res.imm = sign_extend(instr >> 20, 11);
 
             match res.funct3 {
                 0x00 => res.opcode = Opcodes::Addi,
@@ -99,7 +99,7 @@ impl Instruction {
             res.rd = (instr >> 7) & 0x1F;
             res.funct3 = (instr >> 12) & 0x7;
             res.rs1 = (instr >> 15) & 0x1F;
-            res.imm = instr >> 20;
+            res.imm = sign_extend(instr >> 20, 11);
 
             match res.funct3 {
                 0x00 => res.opcode = Opcodes::Lb,
@@ -116,7 +116,7 @@ impl Instruction {
             res.funct3 = (instr >> 12) & 0x7;
             res.rs1 = (instr >> 15) & 0x1F;
             res.rs2 = (instr >> 20) & 0x1F;
-            res.imm = (instr >> 25) << 5 | ((instr >> 7) & 0x1F);
+            res.imm = sign_extend((instr >> 25) << 5 | ((instr >> 7) & 0x1F), 11);
 
             match res.funct3 {
                 0x0 => res.opcode = Opcodes::Sb,
@@ -131,10 +131,13 @@ impl Instruction {
             res.funct3 = (instr >> 12) & 0x7;
             res.rs1 = (instr >> 15) & 0x1F;
             res.rs2 = (instr >> 20) & 0x1F;
-            res.imm = (instr >> 31) << 12
-                | ((instr >> 7) & 1) << 11
-                | ((instr >> 25) & 0x3F) << 10
-                | ((instr >> 8) & 0xF) << 1;
+            res.imm = sign_extend(
+                (instr >> 31) << 12
+                    | ((instr >> 7) & 1) << 11
+                    | ((instr >> 25) & 0x3F) << 10
+                    | ((instr >> 8) & 0xF) << 1,
+                12,
+            );
 
             match res.funct3 {
                 0x0 => res.opcode = Opcodes::Beq,
@@ -151,17 +154,20 @@ impl Instruction {
             // J type
             res.opcode = Opcodes::Jal;
             res.rd = (instr >> 7) & 0x1F;
-            res.imm = (instr >> 31) << 20
-                | ((instr >> 12) & 0xFF) << 19
-                | ((instr >> 20) & 0x1) << 11
-                | ((instr >> 21) & 0x7FF) << 1;
+            res.imm = sign_extend(
+                (instr >> 31) << 20
+                    | ((instr >> 12) & 0xFF) << 19
+                    | ((instr >> 20) & 0x1) << 11
+                    | ((instr >> 21) & 0x7FF) << 1,
+                20,
+            );
             res
         } else if instr & 0x7F == 0x67 {
             // I type
             res.rd = (instr >> 7) & 0x1F;
             res.funct3 = (instr >> 12) & 0x7;
             res.rs1 = (instr >> 15) & 0x1F;
-            res.imm = instr >> 20;
+            res.imm = sign_extend(instr >> 20, 11);
             res.opcode = Opcodes::Jalr;
 
             res
@@ -184,7 +190,7 @@ impl Instruction {
             res.rd = (instr >> 7) & 0x1F;
             res.funct3 = (instr >> 12) & 0x7;
             res.rs1 = (instr >> 15) & 0x1F;
-            res.imm = instr >> 20;
+            res.imm = sign_extend(instr >> 20, 11);
 
             match res.imm {
                 0x0 => res.opcode = Opcodes::Ecall,

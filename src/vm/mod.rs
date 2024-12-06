@@ -428,7 +428,7 @@ impl Vm {
     }
 }
 
-fn sign_extend(value: u32, bit_count: u32) -> u32 {
+pub(crate) fn sign_extend(value: u32, bit_count: u32) -> u32 {
     if (value >> bit_count) & 1 == 1 {
         (0xFFFFFFFF >> bit_count) << bit_count | value
     } else {
