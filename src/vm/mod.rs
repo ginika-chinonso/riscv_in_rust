@@ -17,7 +17,7 @@ mod opcodes;
 pub(crate) const WORD_SIZE: usize = 4; // word size = 32 bits = 8bits * 4
 const HALF_WORD: usize = 2;
 const BYTE: usize = 1;
-const MAX_ADDRESSABLE_MEMORY: usize = 1 << 32; // ????
+const MAX_ADDRESSABLE_MEMORY: usize = 1 << 32;
 const TOTAL_REGISTERS: usize = 33;
 
 struct Vm {
@@ -26,8 +26,6 @@ struct Vm {
     register: [u32; TOTAL_REGISTERS],
     memory: Vec<u8>,
 }
-
-// TODO: work on sign extension
 
 impl Vm {
     fn initialize() -> Self {
@@ -44,7 +42,6 @@ impl Vm {
     }
 
     fn load_program_from_file(&mut self, path: String) {
-        dbg!(&path);
         let mut file = BufReader::new(File::open(path).unwrap());
         let mut buf = vec![];
         file.read_to_end(&mut buf).unwrap();
@@ -78,14 +75,6 @@ impl Vm {
             let instr = Instruction::decode(instruction);
 
             self.execute(instr);
-
-            // dbg!(format!(
-            //     "{}: {} imm: {}",
-            //     instr,
-            //     u32::from_le_bytes(instruction.try_into().unwrap()),
-            //     instr.imm
-            // ));
-            // println!("{:?}", self.register);
         }
     }
 
@@ -102,7 +91,7 @@ impl Vm {
                 self.set_register(
                     instruction.rd as u32,
                     self.get_register(instruction.rs1 as u32)
-                        .wrapping_sub(self.get_register(instruction.rs2 as u32)), // TODO: verify
+                        .wrapping_sub(self.get_register(instruction.rs2 as u32)),
                 );
             }
             Opcodes::Xor => {
@@ -400,7 +389,6 @@ impl Vm {
                 }
             }
             Opcodes::Bltu => {
-                // todo: zero extend
                 if self.get_register(instruction.rs1 as u32)
                     < self.get_register(instruction.rs2 as u32)
                 {
@@ -414,7 +402,6 @@ impl Vm {
                 }
             }
             Opcodes::Bgeu => {
-                // todo: zero extend
                 if self.get_register(instruction.rs1 as u32)
                     >= self.get_register(instruction.rs2 as u32)
                 {
@@ -553,12 +540,6 @@ mod tests {
         // read full word
         assert_eq!(vm.mem_read(memory_address), value);
 
-        //read byte
-        // assert_eq!(vm.mem_read(memory_address), [30,0,0,0]);
-
-        // //read half word
-        // assert_eq!(vm.mem_read(memory_address), [30,15,0,0]);
-
         // store full word
         vm.mem_write(WORD_SIZE, memory_address, &[20, 18, 15, 30]);
         assert_eq!(vm.mem_read(memory_address), &[20, 18, 15, 30]);
@@ -590,7 +571,6 @@ mod tests {
             vm.run_program();
             assert!(!vm.running);
             assert_eq!(vm.exit_code, 0);
-            dbg!(vm.exit_code);
         }
     }
 

@@ -1,11 +1,7 @@
 use std::fmt::Display;
 
-use super::{
-    opcodes::{OpcodeTypes, Opcodes},
-    sign_extend, Registers,
-};
+use super::{opcodes::Opcodes, sign_extend, Registers};
 
-// todo!: verify the types
 #[derive(Debug)]
 pub(crate) struct Instruction {
     pub(crate) opcode: Opcodes,
@@ -197,7 +193,6 @@ impl Instruction {
             res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
             res.rs1 = ((instr >> 15) & 0x1F).into();
-            // res.imm = sign_extend(instr >> 20, 11);
             res.imm = instr >> 20;
 
             match res.imm {
