@@ -75,7 +75,6 @@ impl Instruction {
             match res.funct3 {
                 0x00 => res.opcode = Opcodes::Addi,
                 0x01 => {
-                    // res.funct7 = (instr >> 25) & 0x3F;
                     res.funct7 = (res.imm >> 5) & 0x7F;
                     res.opcode = Opcodes::Slli;
                 }
@@ -83,7 +82,6 @@ impl Instruction {
                 0x03 => res.opcode = Opcodes::Sltiu,
                 0x04 => res.opcode = Opcodes::Xori,
                 0x05 => {
-                    // res.funct7 = (instr >> 25) & 0x3F;
                     res.funct7 = (res.imm >> 5) & 0x7F;
                     match res.funct7 {
                         0x00 => res.opcode = Opcodes::Srli,
@@ -176,7 +174,6 @@ impl Instruction {
             res
         } else if instr & 0x7F == 0x37 {
             // U type (lui)
-
             res.rd = ((instr >> 7) & 0x1F).into();
             res.imm = instr >> 12;
             res.opcode = Opcodes::Lui;
@@ -189,7 +186,6 @@ impl Instruction {
             res
         } else if instr & 0x7F == 0x73 {
             // I type (Ecalls)
-
             res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
             res.rs1 = ((instr >> 15) & 0x1F).into();
@@ -204,7 +200,6 @@ impl Instruction {
             res
         } else if instr & 0x7F == 0xF {
             // Fence
-
             res.opcode = Opcodes::Fence;
             res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
@@ -215,7 +210,6 @@ impl Instruction {
 
             res
         } else {
-            dbg!(instr);
             panic!("Invalid instruction")
         }
     }
