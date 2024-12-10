@@ -1,15 +1,18 @@
 use std::fmt::Display;
 
-use super::{opcodes::Opcodes, sign_extend};
+use super::{
+    opcodes::{OpcodeTypes, Opcodes},
+    sign_extend, Registers,
+};
 
 // todo!: verify the types
 #[derive(Debug)]
 pub(crate) struct Instruction {
     pub(crate) opcode: Opcodes,
-    pub(crate) rd: u32,
+    pub(crate) rd: Registers,
     pub(crate) funct3: u32,
-    pub(crate) rs1: u32,
-    pub(crate) rs2: u32,
+    pub(crate) rs1: Registers,
+    pub(crate) rs2: Registers,
     pub(crate) funct7: u32,
     pub(crate) imm: u32,
     pub(crate) succ: u32,
@@ -21,10 +24,10 @@ impl Instruction {
     fn new() -> Self {
         Self {
             opcode: Opcodes::Default,
-            rd: 0,
+            rd: Registers::Default,
             funct3: 0,
-            rs1: 0,
-            rs2: 0,
+            rs1: Registers::Default,
+            rs2: Registers::Default,
             funct7: 0,
             imm: 0,
             succ: 0,
@@ -39,10 +42,10 @@ impl Instruction {
 
         if instr & 0x7F == 0x33 {
             // R type
-            res.rd = (instr >> 7) & 0x1F;
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
-            res.rs1 = (instr >> 15) & 0x1F;
-            res.rs2 = (instr >> 20) & 0x1F;
+            res.rs1 = ((instr >> 15) & 0x1F).into();
+            res.rs2 = ((instr >> 20) & 0x1F).into();
             res.funct7 = instr >> 25;
 
             match res.funct3 {
@@ -67,23 +70,25 @@ impl Instruction {
 
             res
         } else if instr & 0x7F == 0x13 {
-            // I type
-            res.rd = (instr >> 7) & 0x1F;
+            // I type (immediate)
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
-            res.rs1 = (instr >> 15) & 0x1F;
+            res.rs1 = ((instr >> 15) & 0x1F).into();
             res.imm = sign_extend(instr >> 20, 11);
 
             match res.funct3 {
                 0x00 => res.opcode = Opcodes::Addi,
                 0x01 => {
-                    res.funct7 = (instr >> 25) & 0x3F;
+                    // res.funct7 = (instr >> 25) & 0x3F;
+                    res.funct7 = (res.imm >> 5) & 0x7F;
                     res.opcode = Opcodes::Slli;
                 }
                 0x02 => res.opcode = Opcodes::Slti,
                 0x03 => res.opcode = Opcodes::Sltiu,
                 0x04 => res.opcode = Opcodes::Xori,
                 0x05 => {
-                    res.funct7 = (instr >> 25) & 0x3F;
+                    // res.funct7 = (instr >> 25) & 0x3F;
+                    res.funct7 = (res.imm >> 5) & 0x7F;
                     match res.funct7 {
                         0x00 => res.opcode = Opcodes::Srli,
                         0x20 => res.opcode = Opcodes::Srai,
@@ -97,10 +102,10 @@ impl Instruction {
 
             res
         } else if instr & 0x7F == 0x3 {
-            // Load I type
-            res.rd = (instr >> 7) & 0x1F;
+            // I type(load)
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
-            res.rs1 = (instr >> 15) & 0x1F;
+            res.rs1 = ((instr >> 15) & 0x1F).into();
             res.imm = sign_extend(instr >> 20, 11);
 
             match res.funct3 {
@@ -116,8 +121,8 @@ impl Instruction {
         } else if instr & 0x7F == 0x23 {
             // S type
             res.funct3 = (instr >> 12) & 0x7;
-            res.rs1 = (instr >> 15) & 0x1F;
-            res.rs2 = (instr >> 20) & 0x1F;
+            res.rs1 = ((instr >> 15) & 0x1F).into();
+            res.rs2 = ((instr >> 20) & 0x1F).into();
             res.imm = sign_extend((instr >> 25) << 5 | ((instr >> 7) & 0x1F), 11);
 
             match res.funct3 {
@@ -131,12 +136,12 @@ impl Instruction {
         } else if instr & 0x7F == 0x63 {
             // B type
             res.funct3 = (instr >> 12) & 0x7;
-            res.rs1 = (instr >> 15) & 0x1F;
-            res.rs2 = (instr >> 20) & 0x1F;
+            res.rs1 = ((instr >> 15) & 0x1F).into();
+            res.rs2 = ((instr >> 20) & 0x1F).into();
             res.imm = sign_extend(
                 (instr >> 31) << 12
                     | ((instr >> 7) & 1) << 11
-                    | ((instr >> 25) & 0x3F) << 10
+                    | ((instr >> 25) & 0x3F) << 5
                     | ((instr >> 8) & 0xF) << 1,
                 12,
             );
@@ -155,7 +160,7 @@ impl Instruction {
         } else if instr & 0x7F == 0x6f {
             // J type
             res.opcode = Opcodes::Jal;
-            res.rd = (instr >> 7) & 0x1F;
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.imm = sign_extend(
                 (instr >> 31) << 20
                     | ((instr >> 12) & 0xFF) << 19
@@ -165,39 +170,40 @@ impl Instruction {
             );
             res
         } else if instr & 0x7F == 0x67 {
-            // I type
-            res.rd = (instr >> 7) & 0x1F;
+            // I type (jalr)
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
-            res.rs1 = (instr >> 15) & 0x1F;
+            res.rs1 = ((instr >> 15) & 0x1F).into();
             res.imm = sign_extend(instr >> 20, 11);
             res.opcode = Opcodes::Jalr;
 
             res
         } else if instr & 0x7F == 0x37 {
-            // U type
+            // U type (lui)
 
-            res.rd = (instr >> 7) & 0x1F;
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.imm = instr >> 12;
             res.opcode = Opcodes::Lui;
             res
         } else if instr & 0x7F == 0x17 {
-            // U type
-            res.rd = (instr >> 7) & 0xF;
+            // U type (auipc)
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.imm = instr >> 12;
             res.opcode = Opcodes::Auipc;
             res
         } else if instr & 0x7F == 0x73 {
-            // I type
+            // I type (Ecalls)
 
-            res.rd = (instr >> 7) & 0x1F;
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
-            res.rs1 = (instr >> 15) & 0x1F;
-            res.imm = sign_extend(instr >> 20, 11);
+            res.rs1 = ((instr >> 15) & 0x1F).into();
+            // res.imm = sign_extend(instr >> 20, 11);
+            res.imm = instr >> 20;
 
             match res.imm {
                 0x0 => res.opcode = Opcodes::Ecall,
                 0x1 => res.opcode = Opcodes::Ebreak,
-                _ => panic!("Invalid instruction"),
+                _ => res.opcode = Opcodes::EAny,
             }
 
             res
@@ -205,16 +211,218 @@ impl Instruction {
             // Fence
 
             res.opcode = Opcodes::Fence;
-            res.rd = (instr >> 7) & 0x1F;
+            res.rd = ((instr >> 7) & 0x1F).into();
             res.funct3 = (instr >> 12) & 0x7;
-            res.rs1 = (instr >> 15) & 0x1F;
+            res.rs1 = ((instr >> 15) & 0x1F).into();
             res.succ = (instr >> 20) & 0xF;
             res.pred = (instr >> 24) & 0xF;
             res.fm = instr >> 28;
 
             res
         } else {
+            dbg!(instr);
             panic!("Invalid instruction")
+        }
+    }
+
+    fn encode_to_instruction(instr: String) -> Self {
+        let token: Vec<&str> = instr.split(" ").collect();
+        let mut res = Instruction::new();
+        let opcode = token[0];
+
+        if opcode == "add" {
+            res.opcode = Opcodes::Add;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x00;
+            res.funct7 = 0x00;
+            res
+        } else if opcode == "sub" {
+            res.opcode = Opcodes::Sub;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x00;
+            res.funct7 = 0x20;
+            res
+        } else if opcode == "xor" {
+            res.opcode = Opcodes::Xor;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x4;
+            res.funct7 = 0x00;
+            res
+        } else if opcode == "or" {
+            res.opcode = Opcodes::Or;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x6;
+            res.funct7 = 0x00;
+            res
+        } else if opcode == "and" {
+            res.opcode = Opcodes::And;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x7;
+            res.funct7 = 0x00;
+            res
+        } else if opcode == "sll" {
+            res.opcode = Opcodes::Sll;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x1;
+            res.funct7 = 0x00;
+            res
+        } else if opcode == "srl" {
+            res.opcode = Opcodes::Srl;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x5;
+            res.funct7 = 0x00;
+            res
+        } else if opcode == "sra" {
+            res.opcode = Opcodes::Sra;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x5;
+            res.funct7 = 0x20;
+            res
+        } else if opcode == "slt" {
+            res.opcode = Opcodes::Slt;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x2;
+            res.funct7 = 0x00;
+            res
+        } else if opcode == "sltu" {
+            res.opcode = Opcodes::Sltu;
+            res.rd = token[1].into();
+            res.rs1 = token[2].into();
+            res.rs2 = token[3].into();
+            res.funct3 = 0x3;
+            res.funct7 = 0x00;
+            res
+        } else if opcode == "addi" {
+            todo!()
+        } else if opcode == "xori" {
+            todo!()
+        } else if opcode == "ori" {
+            todo!()
+        } else if opcode == "andi" {
+            todo!()
+        } else if opcode == "slli" {
+            todo!()
+        } else if opcode == "srli" {
+            todo!()
+        } else if opcode == "srai" {
+            todo!()
+        } else if opcode == "slti" {
+            todo!()
+        } else if opcode == "sltiu" {
+            todo!()
+        } else if opcode == "lb" {
+            res.opcode = Opcodes::Lb;
+            res
+        } else if opcode == "lh" {
+            todo!()
+        } else if opcode == "lw" {
+            todo!()
+        } else if opcode == "lbu" {
+            todo!()
+        } else if opcode == "lhu" {
+            todo!()
+        } else if opcode == "sb" {
+            todo!()
+        } else if opcode == "sh" {
+            todo!()
+        } else if opcode == "sw" {
+            todo!()
+        } else if opcode == "beq" {
+            todo!()
+        } else if opcode == "bne" {
+            todo!()
+        } else if opcode == "blt" {
+            todo!()
+        } else if opcode == "bge" {
+            todo!()
+        } else if opcode == "bltu" {
+            todo!()
+        } else if opcode == "bgeu" {
+            todo!()
+        } else if opcode == "jal" {
+            todo!()
+        } else if opcode == "jalr" {
+            todo!()
+        } else if opcode == "lui" {
+            todo!()
+        } else if opcode == "auipc" {
+            todo!()
+        } else if opcode == "ecall" {
+            todo!()
+        } else if opcode == "ebreak" {
+            todo!()
+        } else if opcode == "fence" {
+            todo!()
+        } else if opcode == "eany" {
+            todo!()
+        } else {
+            panic!("Invalid opcode")
+        }
+    }
+
+    fn encode(&self) -> u32 {
+        match self.opcode {
+            Opcodes::Add => todo!(),
+            Opcodes::Sub => todo!(),
+            Opcodes::Xor => todo!(),
+            Opcodes::Or => todo!(),
+            Opcodes::And => todo!(),
+            Opcodes::Sll => todo!(),
+            Opcodes::Srl => todo!(),
+            Opcodes::Sra => todo!(),
+            Opcodes::Slt => todo!(),
+            Opcodes::Sltu => todo!(),
+            Opcodes::Addi => todo!(),
+            Opcodes::Xori => todo!(),
+            Opcodes::Ori => todo!(),
+            Opcodes::Andi => todo!(),
+            Opcodes::Slli => todo!(),
+            Opcodes::Srli => todo!(),
+            Opcodes::Srai => todo!(),
+            Opcodes::Slti => todo!(),
+            Opcodes::Sltiu => todo!(),
+            Opcodes::Lb => todo!(),
+            Opcodes::Lh => todo!(),
+            Opcodes::Lw => todo!(),
+            Opcodes::Lbu => todo!(),
+            Opcodes::Lhu => todo!(),
+            Opcodes::Sb => todo!(),
+            Opcodes::Sh => todo!(),
+            Opcodes::Sw => todo!(),
+            Opcodes::Beq => todo!(),
+            Opcodes::Bne => todo!(),
+            Opcodes::Blt => todo!(),
+            Opcodes::Bge => todo!(),
+            Opcodes::Bltu => todo!(),
+            Opcodes::Bgeu => todo!(),
+            Opcodes::Jal => todo!(),
+            Opcodes::Jalr => todo!(),
+            Opcodes::Lui => todo!(),
+            Opcodes::Auipc => todo!(),
+            Opcodes::Ecall => todo!(),
+            Opcodes::Ebreak => todo!(),
+            Opcodes::Fence => todo!(),
+            //
+            Opcodes::Default => 0,
+            Opcodes::EAny => 0,
         }
     }
 }
@@ -337,19 +545,21 @@ impl Display for Instruction {
             Opcodes::Bltu => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rs1, self.rs2)),
             Opcodes::Bgeu => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rs1, self.rs2)),
             Opcodes::Jal => f.write_fmt(format_args!(
-                "{} {} {} {}",
-                self.opcode, self.rd, self.rs1, self.imm as i32
+                "{} {} {}",
+                self.opcode, self.rd, self.imm as i32
             )),
             Opcodes::Jalr => f.write_fmt(format_args!(
                 "{} {} {} {}",
                 self.opcode, self.rd, self.rs1, self.imm as i32
             )),
-            Opcodes::Lui => f.write_fmt(format_args!("{}", self.opcode)),
-            Opcodes::Auipc => f.write_fmt(format_args!("{}", self.opcode)),
-            Opcodes::Ecall => f.write_fmt(format_args!("{}", self.opcode)),
-            Opcodes::Ebreak => f.write_fmt(format_args!("{}", self.opcode)),
+            Opcodes::Lui => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rd, self.imm)),
+            Opcodes::Auipc => f.write_fmt(format_args!("{} {} {}", self.opcode, self.rd, self.imm)),
+            Opcodes::Ecall => f.write_fmt(format_args!("{} {}", self.opcode, self.imm)),
+            Opcodes::Ebreak => f.write_fmt(format_args!("{} {}", self.opcode, self.imm)),
             Opcodes::Fence => f.write_fmt(format_args!("{}", self.opcode)),
+            //
             Opcodes::Default => f.write_fmt(format_args!("{}", self.opcode)),
+            Opcodes::EAny => f.write_fmt(format_args!("{} {}", self.opcode, self.imm)),
         }
     }
 }
@@ -370,9 +580,9 @@ mod tests {
 
         let instr = Instruction::decode(&instr_as_bytes);
         assert_eq!(instr.opcode, Opcodes::Add);
-        assert_eq!(instr.rd, 10);
-        assert_eq!(instr.rs1, 11);
-        assert_eq!(instr.rs2, 12);
+        assert_eq!(instr.rd as u32, 10);
+        assert_eq!(instr.rs1 as u32, 11);
+        assert_eq!(instr.rs2 as u32, 12);
         assert_eq!(instr.funct3, 0);
         assert_eq!(instr.funct7, 0);
 
